@@ -176,7 +176,7 @@
         } ) ;
     }
 
-    https://lab.syncer.jp/Web/JavaScript/Snippet/61/
+    //https://lab.syncer.jp/Web/JavaScript/Snippet/61/
     function hex2rgb ( hex ) {
         if ( hex.slice(0, 1) == "#" ) hex = hex.slice(1) ;
         if ( hex.length == 3 ) hex = hex.slice(0,1) + hex.slice(0,1) + hex.slice(1,2) + hex.slice(1,2) + hex.slice(2,3) + hex.slice(2,3) ;
@@ -186,7 +186,7 @@
         } ) ;
     }
 
-    https://lab.syncer.jp/Web/JavaScript/Snippet/60/
+    //https://lab.syncer.jp/Web/JavaScript/Snippet/60/
     function rgb2hex ( rgb ) {
         return "#" + rgb.map( function ( value ) {
             return ( "0" + value.toString( 16 ) ).slice( -2 ) ;
