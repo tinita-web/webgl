@@ -1,13 +1,11 @@
 
-// = 012 ======================================================================
-// 3DCG は、現実世界の奥行きのある世界を「計算を駆使して」シミュレートします。
-// 当然、計算方法が変化すれば描画される結果が変わってくるわけですが……
-// たとえばカメラの種類も、この計算方法に大きく影響する要因の１つです。カメラは
-// これまで一貫して PerspectiveCamera を使ってきましたが、three.js にはその他に
-// も OrthographicCamera という種類のカメラがあります。
-// このカメラを利用する場合、プログラマが指定するパラメータもまったく違ったもの
-// になりますし、描画される際の計算方法が変化することで描画結果も変化します。
-// 両者の違いについて把握しておきましょう。
+// = 013 ======================================================================
+// three.js を使っているかどうかにかかわらず、3D プログラミングとはそもそもかな
+// り難易度の高いジャンルです。
+// その中でも、特に最初のころに引っかかりやすいのが「回転や位置」の扱いです。
+// ここではそれを体験する意味も含め、グループの使い方を知っておきましょう。この
+// グループという概念を用いることで、three.js ではオブジェクトの制御をかなり簡単
+// に行うことができるようになっています。
 // ============================================================================
 
 (() => {
@@ -31,18 +29,10 @@
             isDown = false;
         }, false);
 
-        // リサイズイベントの定義 @@@
+        // リサイズイベントの定義
         window.addEventListener('resize', () => {
             renderer.setSize(window.innerWidth, window.innerHeight);
-            // リサイズ時の処理も初期化時と同様の方法で設定する（※説明は初期化時の処理を参照）
-            const aspect = window.innerWidth / window.innerHeight;
-            const scale = 10.0;
-            const horizontal = scale * aspect;
-            const vertiacal = scale;
-            camera.left = -horizontal;
-            camera.right = horizontal;
-            camera.top = vertiacal;
-            camera.bottom = -vertiacal;
+            camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
         }, false);
 
@@ -59,29 +49,28 @@
     let scene;            // シーン
     let camera;           // カメラ
     let renderer;         // レンダラ
-    let geometry;         // ジオメトリ
+    let wingGeo;         // ジオメトリ
+    let jikuGeo;         // ジオメトリ
+    let bodyGeo;         // ジオメトリ
+    let footGeo;         // ジオメトリ
     let material;         // マテリアル
-    let torusArray;       // トーラスメッシュの配列
+    let wingArray;       // トーラスメッシュの配列
+    let headGroup;            // グループ @@@
+    let bodyGroup;            // グループ @@@
     let controls;         // カメラコントロール
     let axesHelper;       // 軸ヘルパーメッシュ
     let directionalLight; // ディレクショナル・ライト（平行光源）
     let ambientLight;     // アンビエントライト（環境光）
 
-    // カメラに関するパラメータ @@@
-    const aspect = window.innerWidth / window.innerHeight; // アスペクト比
-    const scale = 10.0;                                     // 切り取る空間の広さ（スケール）
-    const horizontal = scale * aspect;                     // 横方向のスケール
-    const vertiacal = scale;                               // 縦方向のスケール
+    // カメラに関するパラメータ
     const CAMERA_PARAM = {
-        left: -horizontal,  // 切り取る空間の左端
-        right: horizontal,  // 切り取る空間の右端
-        top: vertiacal,     // 切り取る空間の上端
-        bottom: -vertiacal, // 切り取る空間の下端
+        fovy: 60,
+        aspect: window.innerWidth / window.innerHeight,
         near: 0.1,
         far: 50.0,
         x: 0.0,
         y: 5.0,
-        z: 20.0,
+        z: 10.0,
         lookAt: new THREE.Vector3(0.0, 0.0, 0.0),
     };
     // レンダラに関するパラメータ
@@ -109,6 +98,34 @@
         intensity: 0.2,
     };
 
+    const WING_PARAM = {
+        radius: 2.0,
+        segments: 6,
+        // thetaStart: 0,
+        // thetaLength: `Math.PI * 0.3`
+    }
+
+    const JIKU_PARAM = {
+        top: 0.2,
+        bottom: 0.2,
+        height: 2,
+        segments: 12
+    }
+
+    const BODY_PARAM = {
+        top: 0.3,
+        bottom: 0.3,
+        height: 4,
+        segments: 12
+    }
+
+    const FOOT_PARAM = {
+        top: 1.5,
+        bottom: 1.5,
+        height: 0.25,
+        segments: 24
+    }
+
     function init(){
         // シーン
         scene = new THREE.Scene();
@@ -120,36 +137,107 @@
         const wrapper = document.querySelector('#webgl');
         wrapper.appendChild(renderer.domElement);
 
-        // カメラ @@@
-        camera = new THREE.OrthographicCamera(
-            CAMERA_PARAM.left,
-            CAMERA_PARAM.right,
-            CAMERA_PARAM.top,
-            CAMERA_PARAM.bottom,
+        // カメラ
+        camera = new THREE.PerspectiveCamera(
+            CAMERA_PARAM.fovy,
+            CAMERA_PARAM.aspect,
             CAMERA_PARAM.near,
             CAMERA_PARAM.far
         );
         camera.position.set(CAMERA_PARAM.x, CAMERA_PARAM.y, CAMERA_PARAM.z);
         camera.lookAt(CAMERA_PARAM.lookAt);
 
+        // - グループを使う ---------------------------------------------------
+        // three.js のオブジェクトは、グループにひとまとめにすることができます。
+        // グループを使わないと実現できない挙動、というのも一部にはありますので、
+        // ここで使い方だけでもしっかり覚えておきましょう。
+        // 特に、グループに追加したことによって「回転や平行移動の概念が変わる」
+        // ということが非常に重要です。
+        // --------------------------------------------------------------------
+        // グループ @@@
+        headGroup = new THREE.Group();
+        bodyGroup = new THREE.Group();
+        
         // マテリアル
         material = new THREE.MeshPhongMaterial(MATERIAL_PARAM);
-
+        material.side = THREE.DoubleSide;
+        
         // トーラスジオメトリの生成
-        geometry = new THREE.TorusGeometry(1.0, 0.4, 32, 32);
-        // トーラスのメッシュをまとめて生成し、ランダムに配置する
-        torusArray = [];
-        const count = 20;
+        wingGeo = new THREE.CircleGeometry(
+            WING_PARAM.radius,
+            WING_PARAM.segments, 
+            Math.PI * -0.15,
+            Math.PI * 0.3,
+        );
+
+        jikuGeo = new THREE.CylinderGeometry(
+            JIKU_PARAM.top,
+            JIKU_PARAM.bottom,
+            JIKU_PARAM.height,
+            JIKU_PARAM.segments
+        );
+
+        bodyGeo = new THREE.CylinderGeometry(
+            BODY_PARAM.top,
+            BODY_PARAM.bottom,
+            BODY_PARAM.height,
+            BODY_PARAM.segments
+        );
+
+        footGeo = new THREE.CylinderGeometry(
+            FOOT_PARAM.top,
+            FOOT_PARAM.bottom,
+            FOOT_PARAM.height,
+            FOOT_PARAM.segments
+        );
+
+        footUpperGeo = new THREE.CylinderGeometry(
+            0.3,
+            FOOT_PARAM.bottom,
+            FOOT_PARAM.height,
+            FOOT_PARAM.segments
+        );
+            // トーラスのメッシュをまとめて生成し、ランダムに配置する
+        wingArray = [];
+        const count = 3;
         for(let i = 0; i < count; ++i){
             // ジオメトリとマテリアルは使い回せる
-            const torus = new THREE.Mesh(geometry, material);
+            const wing = new THREE.Mesh(wingGeo, material);
             // 位置をランダムに
-            torus.position.x = Math.random() * 10.0 - 5.0;
-            torus.position.y = Math.random() * 10.0 - 5.0;
-            torus.position.z = Math.random() * 20.0 - 10.0;
-            torusArray.push(torus);
-            scene.add(torus);
+            // wing.position.x = 1.0;
+            let g = new THREE.Group();
+            g.add(wing);
+            g.rotation.z = Math.PI * 2 / 3 * i;
+            // シーンではなく、グループにトーラスを追加する @@@
+            headGroup.add(g);
         }
+        //軸の追加
+        {
+            const jiku = new THREE.Mesh(jikuGeo, material);
+            jiku.rotation.x = Math.PI / 2;
+            // jiku.position.z = -0.5;
+            headGroup.add(jiku);
+        }
+        headGroup.position.z = 1;
+        bodyGroup.add(headGroup);
+        //ボディ軸の追加
+        {
+            const body = new THREE.Mesh(bodyGeo, material);
+            body.position.y = -1.8;
+            bodyGroup.add(body);
+        }
+        //土台の追加
+        {
+            const footUpper = new THREE.Mesh(footUpperGeo, material);
+            footUpper.position.y = -3.55;
+            scene.add(footUpper);
+            const foot = new THREE.Mesh(footGeo, material);
+            foot.position.y = -3.8;
+            scene.add(foot);
+        }
+
+        // グループをシーンに追加する @@@
+        scene.add(bodyGroup);
 
         // ディレクショナルライト
         directionalLight = new THREE.DirectionalLight(
@@ -180,15 +268,10 @@
         // 再帰呼び出し
         if(run === true){requestAnimationFrame(render);}
 
-        // コントロールの更新
-        controls.update();
-
-        // スペースキーが押されている場合メッシュを回転させる
+        // スペースキーが押されている場合グループを回転させる @@@
         if(isDown === true){
-            torusArray.forEach((torus) => {
-                torus.rotation.y += 0.02;
-                torus.rotation.z += 0.02;
-            });
+            bodyGroup.rotation.y += 0.02;
+            headGroup.rotation.z += 0.02;
         }
 
         // 描画
