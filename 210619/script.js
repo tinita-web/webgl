@@ -31,17 +31,15 @@
         // ２つの画像のロードとテクスチャの生成
         const loader = new THREE.TextureLoader();
         earthTexture = loader.load('./earth.jpg', () => {
-            sunTexture = loader.load('./2097654.png', () => {
-                // 月の画像がテクスチャとして生成できたら init を呼ぶ
-                moonTexture = loader.load('./moon.jpg', init);
-            })
+            // 月の画像がテクスチャとして生成できたら init を呼ぶ
+            moonTexture = loader.load('./moon.jpg', init);
         });
     }, false);
 
     // 汎用変数
     let run = true;    // レンダリングループフラグ
     let startTime = 0; // レンダリング開始時のタイムスタンプ @@@
-    
+
     // three.js に関連するオブジェクト用の変数
     let scene;            // シーン
     let camera;           // カメラ
@@ -51,48 +49,43 @@
     let axesHelper;       // 軸ヘルパーメッシュ
     let directionalLight; // ディレクショナル・ライト（平行光源）
     let ambientLight;     // アンビエントライト（環境光）
-    
+
+    let sun;            // 地球のメッシュ
+    let sunMaterial;    // 地球用マテリアル
     let earth;            // 地球のメッシュ
+    let earthGrp;            // 地球のメッシュ
     let earthMaterial;    // 地球用マテリアル
-    let venus;            // 地球のメッシュ
-    let venusMaterial;    // 地球用マテリアル
-    let mercury;            // 地球のメッシュ
-    let mercuryMaterial;    // 地球用マテリアル
     let earthTexture;     // 地球用テクスチャ
     let moon;             // 月のメッシュ
     let moonMaterial;     // 月用マテリアル
     let moonTexture;      // 月用テクスチャ
-    let sun;             // 太陽のメッシュ
-    let sunTexture;      // 月用テクスチャ
-    let sunOuter;             // 太陽のメッシュ
-    let sunOuter2;             // 太陽のメッシュ
-    let sunMaterial;     // 太陽用マテリアル
-    let sunOuterMaterial;     // 太陽用マテリアル
-    
-    let moonGrp;
-    let earthInnerGrp;
-    let earthGrp;
-    let so2Grp;
-    let venusGrp;
-    let mercuryGrp;
 
-    let composer;         // コンポーザー @@@
-    let renderPass;       // レンダーパス @@@
-    
-    
+    let toMoonGeometry;    // ロケットのジオメトリ（コーン） @@@
+    let toMoon;            // ロケットのメッシュ
+    let toMoonGrp;            // ロケットのメッシュ
+    let toMoonGrpVec;            // ロケットのメッシュ
+    let toMoonMaterial;    // ロケット用マテリアル
+
+    let toSunGeometry;    // ロケットのジオメトリ（コーン） @@@
+    let toSun;            // ロケットのメッシュ
+    let toSunGrp;            // ロケットのメッシュ
+    let toSunMaterial;    // ロケット用マテリアル
+
     // 月の移動量に対するスケール @@@
-    const deg2rad = Math.PI / 180;
     const MOON_RANGE = 2.75;
+    const EARTH_RANGE = 10;
+
+    const deg2rad = Math.PI / 180;
 
     // カメラに関するパラメータ
     const CAMERA_PARAM = {
         fovy: 60,
         aspect: window.innerWidth / window.innerHeight,
         near: 0.1,
-        far: 500.0,
+        far: 1000.0,
         x: 0.0,
-        y: 20.0,
-        z: 50.0,
+        y: 10.0,
+        z: 20.0,
         lookAt: new THREE.Vector3(0.0, 0.0, 0.0),
     };
     // レンダラに関するパラメータ
@@ -105,12 +98,6 @@
     const MATERIAL_PARAM = {
         color: 0xffffff,
     };
-    const MATERIAL_PARAM_P = {
-        color: 0xff9933,                  // 頂点の色
-        opacity: 1.0,                     // 不透明度 @@@
-        transparent: true,                // 透明度を有効化するかどうか @@@
-        depthWrite: false                 // 深度値を書き込むかどうか @@@
-    };
     // ライトに関するパラメータ
     const POINT_LIGHT_PARAM = {
         color: 0xffffff,
@@ -121,7 +108,7 @@
     // アンビエントライトに関するパラメータ
     const AMBIENT_LIGHT_PARAM = {
         color: 0xffffff,
-        intensity: 0.1,
+        intensity: 0.2,
     };
 
     function init(){
@@ -145,26 +132,6 @@
         camera.position.set(CAMERA_PARAM.x, CAMERA_PARAM.y, CAMERA_PARAM.z);
         camera.lookAt(CAMERA_PARAM.lookAt);
 
-        // コンポーザーの設定 @@@
-        // 1. コンポーザーにレンダラを渡して初期化する
-        composer = new THREE.EffectComposer(renderer);
-        // 2. コンポーザーに、まず最初に「レンダーパス」を設定する
-        renderPass = new THREE.RenderPass(scene, camera);
-        composer.addPass(renderPass);
-        // 3. コンポーザーに第２のパスとして「グリッチパス」を設定する
-        // glitchPass = new THREE.GlitchPass();
-        const bloomPass = new THREE.BloomPass(
-            2,    // strength
-            25,   // kernel size
-            0.8,    // sigma ?
-            512,  // blur render target resolution
-        );
-        composer.addPass(bloomPass);
-        // 4. グリッチパスまで終わったら画面に描画結果を出すよう指示する
-        var toScreen = new THREE.ShaderPass( THREE.CopyShader );
-        toScreen.renderToScreen = true;
-        composer.addPass( toScreen );
-
         // スフィアジオメトリの生成
         geometry = new THREE.SphereGeometry(1.0, 64, 64);
 
@@ -173,99 +140,47 @@
         earthMaterial.map = earthTexture;
         moonMaterial = new THREE.MeshLambertMaterial(MATERIAL_PARAM);
         moonMaterial.map = moonTexture;
-        venusMaterial = new THREE.MeshBasicMaterial({color: 0xFF4500});
-        mercuryMaterial = new THREE.MeshBasicMaterial({color: 0x696969});
         sunMaterial = new THREE.MeshBasicMaterial({color: 0xFFA500});
-        sunOuterMaterial = new THREE.MeshBasicMaterial(MATERIAL_PARAM_P);
-        sunOuterMaterial.map = sunTexture;
 
-        moonGrp = new THREE.Group();
-        earthInnerGrp = new THREE.Group();
         earthGrp = new THREE.Group();
-        so2Grp = new THREE.Group();
-        venusGrp = new THREE.Group();
-        mercuryGrp = new THREE.Group();
+        toMoonGrp = new THREE.Group();
+        toSunGrp = new THREE.Group();
 
         // メッシュの生成
-        earth = new THREE.Mesh(geometry, earthMaterial);
-        earth.scale.setScalar(1.3);
-        earthInnerGrp.add(earth);
-        scene.add(earthInnerGrp);
-        moon = new THREE.Mesh(geometry, moonMaterial);
-        moonGrp.add(moon);
-        moon.position.x = 1.9;
-        moon.scale.setScalar(0.35);
-        earthInnerGrp.add(moonGrp);
-        earthGrp.add(earthInnerGrp);
-        earthInnerGrp.position.x = 30;
-        earthInnerGrp.rotation.z = -23.4 * deg2rad;
-        scene.add(earthGrp);
-        //mercury
-        mercury = new THREE.Mesh(geometry, mercuryMaterial);
-        mercury.scale.setScalar(0.45);
-        mercury.position.x = 10;
-        mercuryGrp.add(mercury);
-        scene.add(mercuryGrp);
-        //mercury
-        venus = new THREE.Mesh(geometry, venusMaterial);
-        venus.scale.setScalar(1.2);
-        venus.position.x = 20;
-        venusGrp.add(venus);
-        scene.add(venusGrp);
-        
-        //太陽
         sun = new THREE.Mesh(geometry, sunMaterial);
-        sun.scale.setScalar(5);
+        sun.scale.setScalar(2);
         scene.add(sun);
-        sunOuter = new THREE.Mesh(geometry, sunOuterMaterial);
-        sunOuter.scale.setScalar(5.2);
-        scene.add(sunOuter);
-        sunOuter2 = new THREE.Mesh(geometry, sunOuterMaterial);
-        sunOuter2.scale.setScalar(5.2);
-        // sunOuter2.rotation.x = 1;
-        sunOuter2.rotation.z = Math.PI - 0.5;
-        so2Grp.add(sunOuter2);
-        scene.add(so2Grp);
+        earth = new THREE.Mesh(geometry, earthMaterial);
+        earthGrp.add(earth);
 
-        //particle start
-        // 形状データを作成
-        const SIZE = 100;
-        // 配置する個数
-        const LENGTH = 100;
-        // 頂点情報を格納する配列
-        const vertices = [];
-        for (let i = 0; i < LENGTH; i++) {
-            const x = SIZE * (Math.random() - 0.5);
-            const y = SIZE * (Math.random() - 0.5);
-            const z = SIZE * (Math.random() - 0.5);
+        moon = new THREE.Mesh(geometry, moonMaterial);
+        // 月は、サイズを小さくしておく
+        moon.scale.setScalar(0.36);
+        earthGrp.add(moon);
 
-            const distance =25;
-            if(x < distance && y < distance){
-                if(z < distance){
-                    continue;
-                }
-            }
-            
-            vertices.push(x, y, z);
-        }
+        toMoonGeometry = new THREE.ConeGeometry(0.5, 0.8, 32);
+        toMoonMaterial = new THREE.MeshBasicMaterial(MATERIAL_PARAM);
+        toMoon = new THREE.Mesh(toMoonGeometry, toMoonMaterial);
+        toMoon.position.set(0.0, 1.0, 0.0);
+        toMoonGrp.add(toMoon);
+        earthGrp.add(toMoonGrp);
+        toMoonGrpVec = new THREE.Vector3(0.0, 1.0, 0.0);
+
+        toSunGeometry = new THREE.ConeGeometry(0.5, 0.8, 32);
+        toSunMaterial = new THREE.MeshBasicMaterial(MATERIAL_PARAM);
+        toSun = new THREE.Mesh(toSunGeometry, toSunMaterial);
+        toSun.position.set(0.0, 1.0, 0.0);
+        toSunGrp.add(toSun);
+        // toSunGrp.add(sun);
+        earthGrp.attach(toSunGrp);
         
-        // 形状データを作成
-        const particleGeo = new THREE.BufferGeometry();
-        particleGeo.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-        
-        // マテリアルを作成
-        const material = new THREE.PointsMaterial({
-            // 一つ一つのサイズ
-            size: 0.3,
-            // 色
-            color: 0xffffff,
-        });
-        
-        // 物体を作成
-        const mesh = new THREE.Points(particleGeo, material);
-        scene.add(mesh); 
-        //particle end
-        
+        earthGrp.position.x = 10;
+        earthGrp.rotation.z = -23.4 * deg2rad;
+        scene.attach(earthGrp);
+
+
+
+        // ディレクショナルライト
         const light = new THREE.PointLight(
             POINT_LIGHT_PARAM.color,
             POINT_LIGHT_PARAM.intensity,
@@ -273,6 +188,7 @@
             POINT_LIGHT_PARAM.attenuation
              );
         scene.add(light);
+
 
         // アンビエントライト
         ambientLight = new THREE.AmbientLight(
@@ -297,28 +213,43 @@
     function render(){
         // 再帰呼び出し
         if(run === true){requestAnimationFrame(render);}
+
         // 特に意味はないけどとりあえず回しておくか……
-        
+        earth.rotation.y += 0.02;
+
         // 月の座標は、時間の経過からサインとコサインを使って決める @@@
         const nowTime = (Date.now() - startTime) / 1000;
-        // const nowTime = (Date.now() - startTime);
-        const sin = Math.sin(nowTime);
-        const cos = Math.cos(nowTime);
+        const moonRot = [Math.sin(nowTime), Math.cos(nowTime)];
+        const earthRot = [Math.sin(nowTime * 0.5), Math.cos(nowTime * 0.5)];
         // 求めたサインとコサインで月の座標を指定する @@@
-        // moon.position.set(cos * MOON_RANGE, 0.0, sin * MOON_RANGE);
-        
-        const day = nowTime * 360 * deg2rad * 0.5;
-        earth.rotation.y = day % (Math.PI * 2);
-        moonGrp.rotation.y = (day / 29.5) % (Math.PI * 2);
-        earthGrp.rotation.y = (day / 36.5) % (Math.PI * 2);
-        mercuryGrp.rotation.y = (day / 8.8 + Math.PI) % (Math.PI * 2);
-        venusGrp.rotation.y = (day / 22.5 + (Math.PI * 1.5)) % (Math.PI * 2);
-        sunOuter.rotation.y = (day / 3) % (Math.PI * 2);
-        so2Grp.rotation.y = (day / 3 + Math.PI - 1.5) % (Math.PI * 2);
+        moon.position.set(moonRot[0] * MOON_RANGE, 0.0, moonRot[1] * MOON_RANGE);
+        earthGrp.position.set(earthRot[0] * EARTH_RANGE, 0.0, earthRot[1] * EARTH_RANGE);
+        // toMoonGrp.position.set(earthRot[0] * EARTH_RANGE, 0.0, earthRot[1] * EARTH_RANGE);
+
+        const sunLp = earthGrp.worldToLocal(new THREE.Vector3(0, 0, 0)).normalize();
+        const toSunLp = toSun.position.clone().normalize();
+        const moonWP = moon.position.clone().normalize();
+
+        // sun.position.set(sunLp.x, sunLp.y, sunLp.z);
+
+        const tangent = new THREE.Vector3().crossVectors(toMoonGrpVec, moonWP).normalize();
+        // (D) 変換前と変換後のふたつのベクトルから内積でコサインを取り出す @@@
+        const cos = toMoonGrpVec.dot(moonWP);
+        // (D) コサインをラジアンに戻す @@@
+        const radians = Math.acos(cos);
+        // 求めた接線ベクトルとラジアンからクォータニオンを定義 @@@
+        const qtn = new THREE.Quaternion();
+        qtn.setFromAxisAngle(new THREE.Vector3(tangent.x, tangent.y, tangent.z), radians);
+        toMoonGrp.rotation.setFromQuaternion(qtn);
+
+        const tangent2 = new THREE.Vector3().crossVectors(toMoonGrpVec, sunLp).normalize();
+        const cos2 = toMoonGrpVec.dot(sunLp);
+        const radians2 = Math.acos(cos2);
+        const qtn2 = new THREE.Quaternion();
+        qtn2.setFromAxisAngle(new THREE.Vector3(tangent2.x, tangent2.y, tangent2.z), radians2);
+        toSunGrp.rotation.setFromQuaternion(qtn2);
 
         // レンダリング
-        // renderer.render(scene, camera);
-        composer.render();
+        renderer.render(scene, camera);
     }
 })();
-
