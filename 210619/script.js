@@ -171,16 +171,12 @@
         toSun = new THREE.Mesh(toSunGeometry, toSunMaterial);
         toSun.position.set(0.0, 1.0, 0.0);
         toSunGrp.add(toSun);
-        // toSunGrp.add(sun);
         earthGrp.attach(toSunGrp);
         
         earthGrp.position.x = 10;
         earthGrp.rotation.z = -23.4 * deg2rad;
         scene.attach(earthGrp);
 
-
-
-        // ディレクショナルライト
         const light = new THREE.PointLight(
             POINT_LIGHT_PARAM.color,
             POINT_LIGHT_PARAM.intensity,
@@ -229,8 +225,6 @@
         const sunLp = earthGrp.worldToLocal(new THREE.Vector3(0, 0, 0)).normalize();
         const toSunLp = toSun.position.clone().normalize();
         const moonWP = moon.position.clone().normalize();
-
-        // sun.position.set(sunLp.x, sunLp.y, sunLp.z);
 
         const tangent = new THREE.Vector3().crossVectors(toMoonGrpVec, moonWP).normalize();
         // (D) 変換前と変換後のふたつのベクトルから内積でコサインを取り出す @@@
