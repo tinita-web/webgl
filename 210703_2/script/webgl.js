@@ -152,6 +152,23 @@ class WebGLUtility {
         return vbo;
     }
     /**
+     * JavaScript の配列から IBO（Index Buffer Object）を生成する
+     * @param {Array.<number>} indexArray - 頂点属性情報の配列
+     * @return {WebGLBuffer}
+     */
+    createIBO(indexArray){
+        const gl = this.gl;
+        // 空のバッファオブジェクトを生成する
+        const ibo = gl.createBuffer();
+        // バッファを gl.ELEMENT_ARRAY_BUFFER としてバインドする
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo);
+        // バインドしたバッファに Float32Array オブジェクトに変換した配列を設定する
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Int16Array(indexArray), gl.STATIC_DRAW);
+        // 安全のために最後にバインドを解除してからバッファオブジェクトを返す
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
+        return ibo;
+    }
+    /**
      * 頂点属性情報を有効化しロケーションと紐付ける
      * @param {Array.<WebGLBuffer>} vbo - 頂点属性を格納した VBO の配列
      * @param {Array.<number>} attLocation - 頂点属性ロケーションの配列
