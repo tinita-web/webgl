@@ -17,13 +17,19 @@
 //https://torajiro.halfmoon.jp/old/exhosi.html
 (() => {
     // 複数の関数で利用する広いスコープが必要な変数を宣言しておく
-    let position = null;
-    let color = null;
+    let position = [];
+    let color = [];
     let vbo = null;
     let indices = null; // インデックス配列 @@@
     let ibo = null;     // インデックスバッファ @@@
     let uniform = null;
     let mouse = [0, 0];
+
+    const n = 10; //頂点数
+    const r_out = 1.0;　//外側の円の半径のサイズ
+    const r_in= r_out * 0.382; //スポーク比の設定
+    let R;  //半径の変数
+    
 
     // webgl.js に記載のクラスをインスタンス化する
     const webgl = new WebGLUtility();
@@ -53,6 +59,7 @@
             fs = webgl.createShaderObject(fragmentShaderSource, webgl.gl.FRAGMENT_SHADER);
             webgl.program = webgl.createProgramObject(vs, fs);
 
+            // calcPoints();
             // 頂点とロケーションのセットアップは先に行っておく
             setupGeometry();
             setupLocation();
@@ -66,31 +73,39 @@
      * 頂点属性（頂点ジオメトリ）のセットアップを行う
      */
     function setupGeometry(){
-        position = [
-             0.0,  0.4,  0.0,
-             0.5,  0.0,  0.0,
-            -0.5,  0.0,  0.0,
-             0.3, -0.5,  0.0,
-            -0.3, -0.5,  0.0,
-        ];
-        color = [
-            1.0, 0.0, 0.0, 1.0,
-            0.0, 1.0, 0.0, 1.0,
-            0.0, 0.0, 1.0, 1.0,
-            0.0, 0.0, 0.0, 1.0,
-            1.0, 1.0, 1.0, 1.0,
-        ];
-        // 配列に入れておく
-        vbo = [
+            let x;
+            let y;
+            for (let i = 0; i < n; i++) {
+                if (i%2 == 0) {
+                        R = r_out;　//頂点が偶数の場合
+                } else {
+                        R = r_in; //頂点が奇数の場合
+                }
+                x=(R*Math.cos((360/n * i + 18) * ( Math.PI / 180 )));　//x座標取得　
+                y=(R*Math.sin((360/n * i + 18) * ( Math.PI / 180 )));　//y座標取得
+                position.push(x, y, 0.0);
+                if(x > 0){
+                    color.push((y+1)*0.5, x, 0.0, 1.0);
+                }else{
+                    color.push((y+1)*0.5, 0.0, -x, 1.0);
+                }
+            }
+            console.log(position);
+            vbo = [
             webgl.createVBO(position),
             webgl.createVBO(color),
         ];
 
         // インデックス配列で頂点の結ぶ順序を定義する @@@
         indices = [
-            0, 2, 1, // １枚目のポリゴン
-            1, 2, 3, // ２枚目のポリゴン
-            3, 2, 4, // ３枚目のポリゴン
+            1, 2, 3,
+            3, 1, 7,
+            3, 4, 5,
+            5, 3, 7,
+            5, 6, 7,
+            7, 8, 9,
+            9, 0, 1,
+            1, 7, 9,
         ];
         // インデックスバッファを生成する @@@
         ibo = webgl.createIBO(indices);
