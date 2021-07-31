@@ -23,6 +23,6 @@ void main(){
     }
 
     // 最終出力カラーを合成する
-    gl_FragColor = vec4(samplerColor.rgb * diffuse, 1.0);
+    gl_FragColor = vec4(samplerColor.rgb, 1.0);
 }
 
