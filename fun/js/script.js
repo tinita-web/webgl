@@ -5,6 +5,10 @@ import {MTLLoader} from '../../lib/MTLLoader.js';
     window.addEventListener('DOMContentLoaded', () => {
         // 初期化処理
         init();
+        loadmdls('mdl/body.obj', 'mdl/body.mtl');
+        loadmdls('mdl/head.obj', 'mdl/head.mtl');
+        loadmdls('mdl/tumami.obj', 'mdl/tumami.mtl');
+        loadmdls('mdl/wing.obj', 'mdl/wing.mtl');
         // objMtlLoad('mdl/body.obj', 'mdl/body.mtl');
 
         // キーダウンイベントの定義
@@ -30,9 +34,16 @@ import {MTLLoader} from '../../lib/MTLLoader.js';
             camera.updateProjectionMatrix();
         }, false);
 
-        // 描画処理
-        run = true;
-        render();
+        Promise.all(promises)
+        .then(() => {
+            // 描画処理
+            run = true;
+            console.log('one');
+        })
+        .then(() => {
+            console.log('two');
+            render();
+        });
     }, false);
 
     // 汎用変数
@@ -57,6 +68,10 @@ import {MTLLoader} from '../../lib/MTLLoader.js';
     let axesHelper;       // 軸ヘルパーメッシュ
     let directionalLight; // ディレクショナル・ライト（平行光源）
     let ambientLight;     // アンビエントライト（環境光）
+    const promises = [];
+    const mdls = [];
+    headGroup = new THREE.Group();
+    bodyGroup = new THREE.Group();
 
     // カメラに関するパラメータ
     const CAMERA_PARAM = {
@@ -122,20 +137,37 @@ import {MTLLoader} from '../../lib/MTLLoader.js';
         segments: 24
     }
 
-    function objMtlLoad(objFileName, mtlFileName){  //obj,mtlファイルを読み込んでシーンに追加する関数
-        let mdl;
-        const mtlLoader = new MTLLoader();
-        mtlLoader.load(mtlFileName, materials => {  //mtlファイルの読み込み
-            const objLoader = new OBJLoader();
-            materials.preload();
-            objLoader.setMaterials(materials);  //objLoaderにマテリアルをセット
-            objLoader.load(objFileName, object => { //objファイルの読み込み
-                object.scale.set(0.1,0.1,0.1);
-                scene.add(object);  //シーンに追加
-                bodyGeo = object;
+    // function objMtlLoad(objFileName, mtlFileName){  //obj,mtlファイルを読み込んでシーンに追加する関数
+    //     const mtlLoader = new MTLLoader();
+    //     mtlLoader.load(mtlFileName, materials => {  //mtlファイルの読み込み
+    //         const objLoader = new OBJLoader();
+    //         materials.preload();
+    //         objLoader.setMaterials(materials);  //objLoaderにマテリアルをセット
+    //         mdl = objLoader.load(objFileName, object => { //objファイルの読み込み
+    //             // object.scale.set(0.1,0.1,0.1);
+    //             scene.add(object);  //シーンに追加
+    //             mdl = object;
+    //         });
+    //     });
+    //     return mdl;
+    // }
+
+    function loadmdls(objFileName, mtlFileName){
+        promises.push(new Promise((resolve) => {
+            resolve();
+            const mtlLoader = new MTLLoader();
+            mtlLoader.load(mtlFileName, materials => {  //mtlファイルの読み込み
+                const objLoader = new OBJLoader();
+                materials.preload();
+                objLoader.setMaterials(materials);  //objLoaderにマテリアルをセット
+                objLoader.load(objFileName, object => { //objファイルの読み込み
+                    // object.scale.set(0.1,0.1,0.1);
+                    scene.add(object);  //シーンに追加
+                    mdls.push(object);
+                });
             });
-        });
-      }
+        }));
+    }
 
     function init(){
         // シーン
@@ -259,7 +291,7 @@ import {MTLLoader} from '../../lib/MTLLoader.js';
         //     });
         // }
 
-        objMtlLoad('mdl/body.obj', 'mdl/body.mtl');
+        // bodyGeo = objMtlLoad('mdl/body.obj', 'mdl/body.mtl', bodyGeo);
         // bodyGeo.scale.set(0.1,0.1,0.1);
         // scene.add(bodyGeo);
 
@@ -287,6 +319,12 @@ import {MTLLoader} from '../../lib/MTLLoader.js';
 
         // コントロール
         controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.target.set(0.0, 3.0, 0.0);
+        controls.update();
+    }
+
+    function setmdls(){
+        
     }
 
     function render(){
@@ -295,8 +333,8 @@ import {MTLLoader} from '../../lib/MTLLoader.js';
 
         // スペースキーが押されている場合グループを回転させる @@@
         if(isDown === true){
-            bodyGroup.rotation.y += 0.02;
-            headGroup.rotation.z += 0.02;
+            mdls[0].rotation.y += 0.02;
+            // headGroup.rotation.z += 0.02;
         }
 
         // 描画
