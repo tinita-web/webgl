@@ -6,6 +6,7 @@ import {MTLLoader} from '../../lib/MTLLoader.js';
         // 初期化処理
         init();
         
+
         // キーダウンイベントの定義
         window.addEventListener('keydown', (event) => {
             switch(event.key){
@@ -48,7 +49,6 @@ import {MTLLoader} from '../../lib/MTLLoader.js';
     // three.js に関連するオブジェクト用の変数
     let scene;            // シーン
     let camera;           // カメラ
-    let materials;
     let renderer;         // レンダラ
     let controls;         // カメラコントロール
     let axesHelper;       // 軸ヘルパーメッシュ
@@ -64,8 +64,8 @@ import {MTLLoader} from '../../lib/MTLLoader.js';
         near: 0.1,
         far: 50.0,
         x: 0.0,
-        y: 5.0,
-        z: 10.0,
+        y: 10.0,
+        z: 15.0,
         lookAt: new THREE.Vector3(0.0, 0.0, 0.0),
     };
     // レンダラに関するパラメータ
@@ -93,7 +93,7 @@ import {MTLLoader} from '../../lib/MTLLoader.js';
         intensity: 0.2,
     };
 
-    function loadmdls(objFileName, mtlFileName){
+    function loadmdls(objFileName, mtlFileName, arrint){
         promises.push(new Promise((resolve) => {
             const mtlLoader = new MTLLoader();
             mtlLoader.load(mtlFileName, materials => {  //mtlファイルの読み込み
@@ -103,21 +103,21 @@ import {MTLLoader} from '../../lib/MTLLoader.js';
                 objLoader.load(objFileName, object => { //objファイルの読み込み
                     // object.scale.set(0.1,0.1,0.1);
                     scene.add(object);  //シーンに追加
-                    mdls.push(object);
+                    // mdls.push(object);
+                    mdls[arrint] = object;
+                    resolve();
                 });
             });
-            resolve();
         }));
-        console.log('pushed');
     }
 
     function init(){
         // シーン
         scene = new THREE.Scene();
-        loadmdls('mdl/body.obj', 'mdl/body.mtl');
-        loadmdls('mdl/head.obj', 'mdl/head.mtl');
-        loadmdls('mdl/tumami.obj', 'mdl/tumami.mtl');
-        loadmdls('mdl/wing.obj', 'mdl/wing.mtl');
+        loadmdls('mdl/body.obj', 'mdl/body.mtl', 0);
+        loadmdls('mdl/head.obj', 'mdl/head.mtl', 1);
+        loadmdls('mdl/tumami.obj', 'mdl/tumami.mtl', 2);
+        loadmdls('mdl/wing.obj', 'mdl/wing.mtl', 3);
 
         // レンダラ
         renderer = new THREE.WebGLRenderer();
@@ -159,13 +159,20 @@ import {MTLLoader} from '../../lib/MTLLoader.js';
 
         // コントロール
         controls = new THREE.OrbitControls(camera, renderer.domElement);
-        controls.target.set(0.0, 3.0, 0.0);
+        controls.target.set(0.0, 5.0, 0.0);
         controls.update();
     }
 
     function setmdls(){
-        // mdls[3].position.y = 5.0;
-    }
+        //wing
+        mdls[3].position.y = 7.6;
+        mdls[3].position.z = 1.5;
+        mdls[3].rotation.x = Math.PI / 180 * 80;
+        //tumami
+        mdls[2].position.y = 1.2;
+        mdls[2].position.z = 1.6;
+        mdls[2].rotation.x = Math.PI / 180 * 15;
+    }    
 
     function render(){
         // 再帰呼び出し
@@ -173,7 +180,7 @@ import {MTLLoader} from '../../lib/MTLLoader.js';
 
         // スペースキーが押されている場合グループを回転させる @@@
         if(isDown === true){
-            mdls[0].rotation.y += 0.02;
+            mdls[3].rotation.y += 0.2;
         }
 
         // 描画
