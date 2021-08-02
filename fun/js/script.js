@@ -48,6 +48,7 @@ import {MTLLoader} from '../../lib/MTLLoader.js';
     // three.js に関連するオブジェクト用の変数
     let scene;            // シーン
     let camera;           // カメラ
+    let materials;
     let renderer;         // レンダラ
     let controls;         // カメラコントロール
     let axesHelper;       // 軸ヘルパーメッシュ
@@ -91,34 +92,6 @@ import {MTLLoader} from '../../lib/MTLLoader.js';
         color: 0xffffff,
         intensity: 0.2,
     };
-
-    const WING_PARAM = {
-        radius: 2.0,
-        segments: 6,
-        // thetaStart: 0,
-        // thetaLength: `Math.PI * 0.3`
-    }
-
-    const JIKU_PARAM = {
-        top: 0.2,
-        bottom: 0.2,
-        height: 2,
-        segments: 12
-    }
-
-    const BODY_PARAM = {
-        top: 0.3,
-        bottom: 0.3,
-        height: 4,
-        segments: 12
-    }
-
-    const FOOT_PARAM = {
-        top: 1.5,
-        bottom: 1.5,
-        height: 0.25,
-        segments: 24
-    }
 
     function loadmdls(objFileName, mtlFileName){
         promises.push(new Promise((resolve) => {
