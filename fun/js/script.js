@@ -5,12 +5,7 @@ import {MTLLoader} from '../../lib/MTLLoader.js';
     window.addEventListener('DOMContentLoaded', () => {
         // 初期化処理
         init();
-        loadmdls('mdl/body.obj', 'mdl/body.mtl');
-        loadmdls('mdl/head.obj', 'mdl/head.mtl');
-        loadmdls('mdl/tumami.obj', 'mdl/tumami.mtl');
-        loadmdls('mdl/wing.obj', 'mdl/wing.mtl');
-        // objMtlLoad('mdl/body.obj', 'mdl/body.mtl');
-
+        
         // キーダウンイベントの定義
         window.addEventListener('keydown', (event) => {
             switch(event.key){
@@ -36,14 +31,14 @@ import {MTLLoader} from '../../lib/MTLLoader.js';
 
         Promise.all(promises)
         .then(() => {
-            // 描画処理
-            run = true;
+            setmdls();
             console.log('one');
         })
         .then(() => {
             console.log('two');
             render();
         });
+        
     }, false);
 
     // 汎用変数
@@ -54,24 +49,12 @@ import {MTLLoader} from '../../lib/MTLLoader.js';
     let scene;            // シーン
     let camera;           // カメラ
     let renderer;         // レンダラ
-    let fun;
-    let wingGeo;         // ジオメトリ
-    let jikuGeo;         // ジオメトリ
-    let bodyGeo;         // ジオメトリ
-    let footGeo;         // ジオメトリ
-    let footUpperGeo;         // ジオメトリ
-    let material;         // マテリアル
-    let wingArray;       // トーラスメッシュの配列
-    let headGroup;            // グループ @@@
-    let bodyGroup;            // グループ @@@
     let controls;         // カメラコントロール
     let axesHelper;       // 軸ヘルパーメッシュ
     let directionalLight; // ディレクショナル・ライト（平行光源）
     let ambientLight;     // アンビエントライト（環境光）
     const promises = [];
     const mdls = [];
-    headGroup = new THREE.Group();
-    bodyGroup = new THREE.Group();
 
     // カメラに関するパラメータ
     const CAMERA_PARAM = {
@@ -137,24 +120,8 @@ import {MTLLoader} from '../../lib/MTLLoader.js';
         segments: 24
     }
 
-    // function objMtlLoad(objFileName, mtlFileName){  //obj,mtlファイルを読み込んでシーンに追加する関数
-    //     const mtlLoader = new MTLLoader();
-    //     mtlLoader.load(mtlFileName, materials => {  //mtlファイルの読み込み
-    //         const objLoader = new OBJLoader();
-    //         materials.preload();
-    //         objLoader.setMaterials(materials);  //objLoaderにマテリアルをセット
-    //         mdl = objLoader.load(objFileName, object => { //objファイルの読み込み
-    //             // object.scale.set(0.1,0.1,0.1);
-    //             scene.add(object);  //シーンに追加
-    //             mdl = object;
-    //         });
-    //     });
-    //     return mdl;
-    // }
-
     function loadmdls(objFileName, mtlFileName){
         promises.push(new Promise((resolve) => {
-            resolve();
             const mtlLoader = new MTLLoader();
             mtlLoader.load(mtlFileName, materials => {  //mtlファイルの読み込み
                 const objLoader = new OBJLoader();
@@ -166,12 +133,18 @@ import {MTLLoader} from '../../lib/MTLLoader.js';
                     mdls.push(object);
                 });
             });
+            resolve();
         }));
+        console.log('pushed');
     }
 
     function init(){
         // シーン
         scene = new THREE.Scene();
+        loadmdls('mdl/body.obj', 'mdl/body.mtl');
+        loadmdls('mdl/head.obj', 'mdl/head.mtl');
+        loadmdls('mdl/tumami.obj', 'mdl/tumami.mtl');
+        loadmdls('mdl/wing.obj', 'mdl/wing.mtl');
 
         // レンダラ
         renderer = new THREE.WebGLRenderer();
@@ -189,112 +162,6 @@ import {MTLLoader} from '../../lib/MTLLoader.js';
         );
         camera.position.set(CAMERA_PARAM.x, CAMERA_PARAM.y, CAMERA_PARAM.z);
         camera.lookAt(CAMERA_PARAM.lookAt);
-
-        // - グループを使う ---------------------------------------------------
-        // three.js のオブジェクトは、グループにひとまとめにすることができます。
-        // グループを使わないと実現できない挙動、というのも一部にはありますので、
-        // ここで使い方だけでもしっかり覚えておきましょう。
-        // 特に、グループに追加したことによって「回転や平行移動の概念が変わる」
-        // ということが非常に重要です。
-        // --------------------------------------------------------------------
-        // グループ @@@
-        /*
-        headGroup = new THREE.Group();
-        bodyGroup = new THREE.Group();
-        
-        // マテリアル
-        material = new THREE.MeshPhongMaterial(MATERIAL_PARAM);
-        material.side = THREE.DoubleSide;
-        
-        // トーラスジオメトリの生成
-        wingGeo = new THREE.CircleGeometry(
-            WING_PARAM.radius,
-            WING_PARAM.segments, 
-            Math.PI * -0.15,
-            Math.PI * 0.3,
-        );
-
-        jikuGeo = new THREE.CylinderGeometry(
-            JIKU_PARAM.top,
-            JIKU_PARAM.bottom,
-            JIKU_PARAM.height,
-            JIKU_PARAM.segments
-        );
-
-        bodyGeo = new THREE.CylinderGeometry(
-            BODY_PARAM.top,
-            BODY_PARAM.bottom,
-            BODY_PARAM.height,
-            BODY_PARAM.segments
-        );
-
-        footGeo = new THREE.CylinderGeometry(
-            FOOT_PARAM.top,
-            FOOT_PARAM.bottom,
-            FOOT_PARAM.height,
-            FOOT_PARAM.segments
-        );
-
-        footUpperGeo = new THREE.CylinderGeometry(
-            0.3,
-            FOOT_PARAM.bottom,
-            FOOT_PARAM.height,
-            FOOT_PARAM.segments
-        );
-            // トーラスのメッシュをまとめて生成し、ランダムに配置する
-        wingArray = [];
-        const count = 3;
-        for(let i = 0; i < count; ++i){
-            // ジオメトリとマテリアルは使い回せる
-            const wing = new THREE.Mesh(wingGeo, material);
-            // 位置をランダムに
-            // wing.position.x = 1.0;
-            let g = new THREE.Group();
-            g.add(wing);
-            g.rotation.z = Math.PI * 2 / 3 * i;
-            // シーンではなく、グループにトーラスを追加する @@@
-            headGroup.add(g);
-        }
-        //軸の追加
-        {
-            const jiku = new THREE.Mesh(jikuGeo, material);
-            jiku.rotation.x = Math.PI / 2;
-            // jiku.position.z = -0.5;
-            headGroup.add(jiku);
-        }
-        headGroup.position.z = 1;
-        bodyGroup.add(headGroup);
-        //ボディ軸の追加
-        {
-            const body = new THREE.Mesh(bodyGeo, material);
-            body.position.y = -1.8;
-            bodyGroup.add(body);
-        }
-        //土台の追加
-        {
-            const footUpper = new THREE.Mesh(footUpperGeo, material);
-            footUpper.position.y = -3.55;
-            scene.add(footUpper);
-            const foot = new THREE.Mesh(footGeo, material);
-            foot.position.y = -3.8;
-            scene.add(foot);
-        }
-
-        // グループをシーンに追加する @@@
-        scene.add(bodyGroup);
-        */
-
-        // {
-        //     const objLoader = new OBJLoader();
-        //     objLoader.load('./mdl/body.obj', (root) => {
-        //       scene.add(root);
-        //     });
-        // }
-
-        // bodyGeo = objMtlLoad('mdl/body.obj', 'mdl/body.mtl', bodyGeo);
-        // bodyGeo.scale.set(0.1,0.1,0.1);
-        // scene.add(bodyGeo);
-
 
         // ディレクショナルライト
         directionalLight = new THREE.DirectionalLight(
@@ -324,7 +191,7 @@ import {MTLLoader} from '../../lib/MTLLoader.js';
     }
 
     function setmdls(){
-        
+        // mdls[3].position.y = 5.0;
     }
 
     function render(){
@@ -334,7 +201,6 @@ import {MTLLoader} from '../../lib/MTLLoader.js';
         // スペースキーが押されている場合グループを回転させる @@@
         if(isDown === true){
             mdls[0].rotation.y += 0.02;
-            // headGroup.rotation.z += 0.02;
         }
 
         // 描画
