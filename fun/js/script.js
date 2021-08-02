@@ -22,6 +22,33 @@ import {MTLLoader} from '../../lib/MTLLoader.js';
         window.addEventListener('keyup', (event) => {
             isDown = false;
         }, false);
+        
+        window.addEventListener('mousemove', (event) => {
+            const element = event.currentTarget;
+            // canvas要素上のXY座標
+            const x = event.clientX - element.offsetLeft;
+            const y = event.clientY - element.offsetTop;
+            // canvas要素の幅・高さ
+            const w = element.offsetWidth;
+            const h = element.offsetHeight;
+
+            // -1〜+1の範囲で現在のマウス座標を登録する
+            mouse.x = ( x / w ) * 2 - 1;
+            mouse.y = -( y / h ) * 2 + 1;
+        });
+
+        window.addEventListener('click', () => {
+            // レイキャスト = マウス位置からまっすぐに伸びる光線ベクトルを生成
+            raycaster.setFromCamera(mouse, camera);
+
+            // その光線とぶつかったオブジェクトを得る
+            const intersects = raycaster.intersectObjects([mdls[2]]);
+            console.log(intersects);
+            if(intersects.length > 0){
+                rot += Math.PI / 180 * 240;
+                rot = rot % (Math.PI * 2);
+            }
+        });
 
         // リサイズイベントの定義
         window.addEventListener('resize', () => {
@@ -33,10 +60,8 @@ import {MTLLoader} from '../../lib/MTLLoader.js';
         Promise.all(promises)
         .then(() => {
             setmdls();
-            console.log('one');
         })
         .then(() => {
-            console.log('two');
             render();
         });
         
@@ -45,6 +70,9 @@ import {MTLLoader} from '../../lib/MTLLoader.js';
     // 汎用変数
     let run = true;     // レンダリングループフラグ
     let isDown = false; // スペースキーが押されているかどうかのフラグ
+    let rot = 0.0;
+    const mouse = new THREE.Vector2();
+    const raycaster = new THREE.Raycaster();
 
     // three.js に関連するオブジェクト用の変数
     let scene;            // シーン
@@ -182,6 +210,13 @@ import {MTLLoader} from '../../lib/MTLLoader.js';
         if(isDown === true){
             mdls[3].rotation.y += 0.2;
         }
+
+        
+
+        mdls[2].rotation.y = rot;
+        
+
+        // console.log(rot);
 
         // 描画
         renderer.render(scene, camera);
