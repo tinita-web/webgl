@@ -23,32 +23,25 @@ import {MTLLoader} from '../../lib/MTLLoader.js';
             isDown = false;
         }, false);
         
-        window.addEventListener('mousemove', (event) => {
-            const element = event.currentTarget;
-            // canvas要素上のXY座標
-            const x = event.clientX - element.offsetLeft;
-            const y = event.clientY - element.offsetTop;
-            // canvas要素の幅・高さ
-            const w = element.offsetWidth;
-            const h = element.offsetHeight;
+        // マウスのクリックイベントの定義 @@@
+        window.addEventListener('click', (event) => {
+            //（カーソル位置/全体の幅）→ 0.0~1.0 → 0.0~2.0 → -1.0 ~ 1.0
+            const x = event.clientX / window.innerWidth * 2.0 - 1.0;
+            const y = event.clientY / window.innerHeight * 2.0 - 1.0;
+            //レイキャスターに渡すときはYだけ反転させる　スクリーン空間は下に行くほど+Yのため
+            const v = new THREE.Vector2(x, -y);
 
-            // -1〜+1の範囲で現在のマウス座標を登録する
-            mouse.x = ( x / w ) * 2 - 1;
-            mouse.y = -( y / h ) * 2 + 1;
-        });
+            // レイキャスターに正規化済みマウス座標とカメラを指定する
+            raycaster.setFromCamera(v, camera);
+            // scene に含まれるすべてのオブジェクトを対象にレイキャストする
+            const intersect = raycaster.intersectObject(mdls[2].children[0]);
+            console.log(intersect);
 
-        window.addEventListener('click', () => {
-            // レイキャスト = マウス位置からまっすぐに伸びる光線ベクトルを生成
-            raycaster.setFromCamera(mouse, camera);
-
-            // その光線とぶつかったオブジェクトを得る
-            const intersects = raycaster.intersectObjects([mdls[2]]);
-            console.log(intersects);
-            if(intersects.length > 0){
+            if(intersect.length > 0){
                 rot += Math.PI / 180 * 240;
                 rot = rot % (Math.PI * 2);
             }
-        });
+        }, false);
 
         // リサイズイベントの定義
         window.addEventListener('resize', () => {
@@ -129,9 +122,7 @@ import {MTLLoader} from '../../lib/MTLLoader.js';
                 materials.preload();
                 objLoader.setMaterials(materials);  //objLoaderにマテリアルをセット
                 objLoader.load(objFileName, object => { //objファイルの読み込み
-                    // object.scale.set(0.1,0.1,0.1);
                     scene.add(object);  //シーンに追加
-                    // mdls.push(object);
                     mdls[arrint] = object;
                     resolve();
                 });
@@ -210,9 +201,6 @@ import {MTLLoader} from '../../lib/MTLLoader.js';
         if(isDown === true){
             mdls[3].rotation.y += 0.2;
         }
-
-        
-
         mdls[2].rotation.y = rot;
         
 
