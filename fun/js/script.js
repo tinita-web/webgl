@@ -4,42 +4,21 @@ import {MTLLoader} from '../../lib/MTLLoader.js';
 (() => {
     window.addEventListener('DOMContentLoaded', () => {
         // 初期化処理
+        
         init();
         
-
-        // キーダウンイベントの定義
-        window.addEventListener('keydown', (event) => {
-            switch(event.key){
-                case 'Escape':
-                    run = event.key !== 'Escape';
-                    break;
-                case ' ':
-                    isDown = true;
-                    break;
-                default:
-            }
-        }, false);
-        window.addEventListener('keyup', (event) => {
-            isDown = false;
-        }, false);
-        
-        // マウスのクリックイベントの定義 @@@
         window.addEventListener('click', (event) => {
-            //（カーソル位置/全体の幅）→ 0.0~1.0 → 0.0~2.0 → -1.0 ~ 1.0
             const x = event.clientX / window.innerWidth * 2.0 - 1.0;
             const y = event.clientY / window.innerHeight * 2.0 - 1.0;
-            //レイキャスターに渡すときはYだけ反転させる　スクリーン空間は下に行くほど+Yのため
             const v = new THREE.Vector2(x, -y);
 
-            // レイキャスターに正規化済みマウス座標とカメラを指定する
             raycaster.setFromCamera(v, camera);
-            // scene に含まれるすべてのオブジェクトを対象にレイキャストする
             const intersect = raycaster.intersectObject(mdls[2].children[0]);
-            console.log(intersect);
 
             if(intersect.length > 0){
                 rot += Math.PI / 180 * 240;
                 rot = rot % (Math.PI * 2);
+                count++;
             }
         }, false);
 
@@ -64,15 +43,21 @@ import {MTLLoader} from '../../lib/MTLLoader.js';
     let run = true;     // レンダリングループフラグ
     let isDown = false; // スペースキーが押されているかどうかのフラグ
     let rot = 0.0;
-    const mouse = new THREE.Vector2();
+    let count = 0;
+    let headrad = 0.0;
     const raycaster = new THREE.Raycaster();
 
     // three.js に関連するオブジェクト用の変数
     let scene;            // シーン
     let camera;           // カメラ
     let renderer;         // レンダラ
+    let mat;
+    let textGeo;
+    let textMesh;
+    let trisGeo;
+    let tris;
+    let headGroup;
     let controls;         // カメラコントロール
-    let axesHelper;       // 軸ヘルパーメッシュ
     let directionalLight; // ディレクショナル・ライト（平行光源）
     let ambientLight;     // アンビエントライト（環境光）
     const promises = [];
@@ -84,36 +69,43 @@ import {MTLLoader} from '../../lib/MTLLoader.js';
         aspect: window.innerWidth / window.innerHeight,
         near: 0.1,
         far: 50.0,
-        x: 0.0,
+        x: -7.0,
         y: 10.0,
-        z: 15.0,
+        z: 20.0,
         lookAt: new THREE.Vector3(0.0, 0.0, 0.0),
     };
     // レンダラに関するパラメータ
     const RENDERER_PARAM = {
-        clearColor: 0x666666,
+        clearColor: 0x29C6D1,
         width: window.innerWidth,
         height: window.innerHeight,
     };
     // マテリアルのパラメータ
     const MATERIAL_PARAM = {
-        color: 0x3399ff,
-        specular: 0xffffff,
+        color: 0xDD9496,
+    };
+    // textパラメータ
+    const TEXT_PARAM = {
+        txt: 'click here!',
+        size: 20,
+        height: 1,
+        curveSegments: 1
     };
     // ライトに関するパラメータの定義
     const DIRECTIONAL_LIGHT_PARAM = {
         color: 0xffffff,
         intensity: 1.0,
-        x: 1.0,
+        x: 2.0,
         y: 1.0,
         z: 1.0
     };
     // アンビエントライトに関するパラメータの定義
     const AMBIENT_LIGHT_PARAM = {
-        color: 0xffffff,
-        intensity: 0.2,
+        color: 0xDD9496,
+        intensity: 0.8,
     };
 
+    //モデルの読み込み
     function loadmdls(objFileName, mtlFileName, arrint){
         promises.push(new Promise((resolve) => {
             const mtlLoader = new MTLLoader();
@@ -122,7 +114,11 @@ import {MTLLoader} from '../../lib/MTLLoader.js';
                 materials.preload();
                 objLoader.setMaterials(materials);  //objLoaderにマテリアルをセット
                 objLoader.load(objFileName, object => { //objファイルの読み込み
-                    scene.add(object);  //シーンに追加
+                    if(arrint === 1 || arrint === 3){
+                        headGroup.add(object);
+                    }else{
+                        scene.add(object);  //シーンに追加
+                    }
                     mdls[arrint] = object;
                     resolve();
                 });
@@ -133,10 +129,65 @@ import {MTLLoader} from '../../lib/MTLLoader.js';
     function init(){
         // シーン
         scene = new THREE.Scene();
+        headGroup = new THREE.Group();
         loadmdls('mdl/body.obj', 'mdl/body.mtl', 0);
         loadmdls('mdl/head.obj', 'mdl/head.mtl', 1);
         loadmdls('mdl/tumami.obj', 'mdl/tumami.mtl', 2);
         loadmdls('mdl/wing.obj', 'mdl/wing.mtl', 3);
+
+        //マテリアル
+        const colors = new Uint8Array( 3 );
+
+        for ( let c = 0; c <= colors.length; c ++ ) {
+            colors[ c ] = ( c / colors.length ) * 256;
+        }
+        
+        const gradientMap = new THREE.DataTexture( colors, colors.length, 1, THREE.LuminanceFormat );
+        gradientMap.minFilter = THREE.NearestFilter;
+        gradientMap.magFilter = THREE.NearestFilter;
+        gradientMap.generateMipmaps = false;
+        
+        mat = new THREE.MeshToonMaterial( {
+            color: MATERIAL_PARAM.color,
+            gradientMap: gradientMap
+        } );
+
+        //文字
+        const loader = new THREE.FontLoader();
+        loader.load( 'font/helvetiker_bold.typeface.json', function ( font ) {
+            textGeo = new THREE.TextGeometry( TEXT_PARAM.txt, {
+                font: font,
+                size: TEXT_PARAM.size,
+                height: TEXT_PARAM.height,
+                curveSegments: TEXT_PARAM.curveSegments
+            } );
+            textMesh = new THREE.Mesh( textGeo, mat );
+            textMesh.scale.set(0.05,0.05,0.05);
+            textMesh.position.set(-3.5, 0.0, 6.0);
+            textMesh.rotation.x = Math.PI / 180 * -90;
+            scene.add( textMesh );
+        } );
+
+        //三角形
+        trisGeo = new THREE.BufferGeometry();
+        const vertices = new Float32Array( [
+            0.5, 0.0, 0.0,
+            0.0, 0.0, 1.0,
+            -0.5, 0.0, 0.0,
+        ] );
+        const normals = new Float32Array( [
+            0.0, -1.0, 0.0,
+            0.0, -1.0, 0.0,
+            0.0, -1.0, 0.0,
+        ] );
+
+        trisGeo.setAttribute( 'position', new THREE.BufferAttribute( vertices, 3 ) );
+        trisGeo.setAttribute( 'normal', new THREE.BufferAttribute( normals, 3 ) );
+        tris =  new THREE.Mesh(trisGeo,mat);
+        tris.position.set(0.0, 0.0, 4.3);
+        tris.rotation.x = Math.PI / 180 * 180;
+
+        scene.add(tris);
 
         // レンダラ
         renderer = new THREE.WebGLRenderer();
@@ -172,10 +223,6 @@ import {MTLLoader} from '../../lib/MTLLoader.js';
         );
         scene.add(ambientLight);
 
-        // 軸ヘルパー
-        axesHelper = new THREE.AxesHelper(5.0);
-        scene.add(axesHelper);
-
         // コントロール
         controls = new THREE.OrbitControls(camera, renderer.domElement);
         controls.target.set(0.0, 5.0, 0.0);
@@ -183,6 +230,10 @@ import {MTLLoader} from '../../lib/MTLLoader.js';
     }
 
     function setmdls(){
+        scene.add(headGroup);
+        for(let i = 0; i < 4; i++){
+            mdls[i].children[0].material = mat;
+        }
         //wing
         mdls[3].position.y = 7.6;
         mdls[3].position.z = 1.5;
@@ -197,14 +248,16 @@ import {MTLLoader} from '../../lib/MTLLoader.js';
         // 再帰呼び出し
         if(run === true){requestAnimationFrame(render);}
 
-        // スペースキーが押されている場合グループを回転させる @@@
-        if(isDown === true){
-            mdls[3].rotation.y += 0.2;
-        }
         mdls[2].rotation.y = rot;
         
-
-        // console.log(rot);
+        const mode = count % 3;
+        if(mode === 1){
+            mdls[3].rotation.y += 0.5;
+        }else if(mode === 2){
+            mdls[3].rotation.y += 0.5;
+            headrad += Math.PI / 180 * 0.4;
+            headGroup.rotation.y = Math.sin(headrad);
+        }
 
         // 描画
         renderer.render(scene, camera);
