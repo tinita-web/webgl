@@ -8,11 +8,11 @@ import {MTLLoader} from '../../lib/MTLLoader.js';
         init();
         
         window.addEventListener('click', (event) => {
-            clicked();
+            clicked(event);
         }, false);
 
         window.addEventListener('touchstart', (event) => {
-            clicked();
+            clicked(event);
         }, false);
 
         // リサイズイベントの定義
@@ -222,7 +222,7 @@ import {MTLLoader} from '../../lib/MTLLoader.js';
         controls.update();
     }
 
-    function clicked(){
+    function clicked(event){
         const x = event.clientX / window.innerWidth * 2.0 - 1.0;
         const y = event.clientY / window.innerHeight * 2.0 - 1.0;
         const v = new THREE.Vector2(x, -y);
