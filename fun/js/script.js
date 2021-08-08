@@ -8,18 +8,11 @@ import {MTLLoader} from '../../lib/MTLLoader.js';
         init();
         
         window.addEventListener('click', (event) => {
-            const x = event.clientX / window.innerWidth * 2.0 - 1.0;
-            const y = event.clientY / window.innerHeight * 2.0 - 1.0;
-            const v = new THREE.Vector2(x, -y);
+            clicked();
+        }, false);
 
-            raycaster.setFromCamera(v, camera);
-            const intersect = raycaster.intersectObject(mdls[2].children[0]);
-
-            if(intersect.length > 0){
-                rot += Math.PI / 180 * 240;
-                rot = rot % (Math.PI * 2);
-                count++;
-            }
+        window.addEventListener('touchstart', (event) => {
+            clicked();
         }, false);
 
         // リサイズイベントの定義
@@ -227,6 +220,21 @@ import {MTLLoader} from '../../lib/MTLLoader.js';
         controls = new THREE.OrbitControls(camera, renderer.domElement);
         controls.target.set(0.0, 5.0, 0.0);
         controls.update();
+    }
+
+    function clicked(){
+        const x = event.clientX / window.innerWidth * 2.0 - 1.0;
+        const y = event.clientY / window.innerHeight * 2.0 - 1.0;
+        const v = new THREE.Vector2(x, -y);
+
+        raycaster.setFromCamera(v, camera);
+        const intersect = raycaster.intersectObject(mdls[2].children[0]);
+
+        if(intersect.length > 0){
+            rot += Math.PI / 180 * 240;
+            rot = rot % (Math.PI * 2);
+            count++;
+        }
     }
 
     function setmdls(){
