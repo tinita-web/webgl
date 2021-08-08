@@ -34,9 +34,9 @@ import {MTLLoader} from '../../lib/MTLLoader.js';
 
     // 汎用変数
     let run = true;     // レンダリングループフラグ
-    let isDown = false; // スペースキーが押されているかどうかのフラグ
     let rot = 0.0;
     let count = 0;
+    let bodytime = 0.0;
     let headrad = 0.0;
     const raycaster = new THREE.Raycaster();
 
@@ -49,6 +49,7 @@ import {MTLLoader} from '../../lib/MTLLoader.js';
     let textMesh;
     let trisGeo;
     let tris;
+    let allGroup;
     let headGroup;
     let controls;         // カメラコントロール
     let directionalLight; // ディレクショナル・ライト（平行光源）
@@ -110,7 +111,7 @@ import {MTLLoader} from '../../lib/MTLLoader.js';
                     if(arrint === 1 || arrint === 3){
                         headGroup.add(object);
                     }else{
-                        scene.add(object);  //シーンに追加
+                        allGroup.add(object);  //シーンに追加
                     }
                     mdls[arrint] = object;
                     resolve();
@@ -122,6 +123,7 @@ import {MTLLoader} from '../../lib/MTLLoader.js';
     function init(){
         // シーン
         scene = new THREE.Scene();
+        allGroup = new THREE.Group();
         headGroup = new THREE.Group();
         loadmdls('mdl/body.obj', 'mdl/body.mtl', 0);
         loadmdls('mdl/head.obj', 'mdl/head.mtl', 1);
@@ -238,7 +240,8 @@ import {MTLLoader} from '../../lib/MTLLoader.js';
     }
 
     function setmdls(){
-        scene.add(headGroup);
+        allGroup.add(headGroup);
+        scene.add(allGroup);
         for(let i = 0; i < 4; i++){
             mdls[i].children[0].material = mat;
         }
@@ -258,13 +261,22 @@ import {MTLLoader} from '../../lib/MTLLoader.js';
 
         mdls[2].rotation.y = rot;
         
-        const mode = count % 3;
-        if(mode === 1){
-            mdls[3].rotation.y += 0.5;
-        }else if(mode === 2){
-            mdls[3].rotation.y += 0.5;
-            headrad += Math.PI / 180 * 0.4;
-            headGroup.rotation.y = Math.sin(headrad);
+        if(count > 9){
+            bodytime += 0.01
+            if(allGroup.position.y < 100){
+                allGroup.position.y += Math.pow(bodytime, 2);
+                allGroup.position.x = Math.random() * 0.2;
+                allGroup.position.z = Math.random() * 0.2;
+            }
+        }else{
+            const mode = count % 3;
+            if(mode === 1){
+                mdls[3].rotation.y += 0.5;
+            }else if(mode === 2){
+                mdls[3].rotation.y += 0.5;
+                headrad += Math.PI / 180 * 0.4;
+                headGroup.rotation.y = Math.sin(headrad);
+            }
         }
 
         // 描画
