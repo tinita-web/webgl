@@ -12,7 +12,7 @@ import {MTLLoader} from '../../lib/MTLLoader.js';
         }, false);
 
         window.addEventListener('touchstart', (event) => {
-            clicked(event);
+            clicked(event.touches[0]);
         }, false);
 
         // リサイズイベントの定義
