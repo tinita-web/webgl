@@ -1,5 +1,4 @@
-import {OBJLoader} from '../../lib/OBJLoader.js';
-import {MTLLoader} from '../../lib/MTLLoader.js';
+// import {FBXLoader} from '../../lib/FBXLoader.js';
 
 (() => {
     window.addEventListener('DOMContentLoaded', () => {
@@ -39,23 +38,25 @@ import {MTLLoader} from '../../lib/MTLLoader.js';
     let bodytime = 0.0;
     let headrad = 0.0;
     const raycaster = new THREE.Raycaster();
+    const clock = new THREE.Clock();
 
     // three.js に関連するオブジェクト用の変数
     let scene;            // シーン
     let camera;           // カメラ
     let renderer;         // レンダラ
+    let stats;
     let mat;
     let textGeo;
     let textMesh;
     let trisGeo;
     let tris;
-    let allGroup;
-    let headGroup;
     let controls;         // カメラコントロール
     let directionalLight; // ディレクショナル・ライト（平行光源）
     let ambientLight;     // アンビエントライト（環境光）
     const promises = [];
     const mdls = [];
+    let mixer;
+    const mixers = [];
 
     // カメラに関するパラメータ
     const CAMERA_PARAM = {
@@ -100,35 +101,28 @@ import {MTLLoader} from '../../lib/MTLLoader.js';
     };
 
     //モデルの読み込み
-    function loadmdls(objFileName, mtlFileName, arrint){
+    function loadmdls(fbxFileName, arrint){
         promises.push(new Promise((resolve) => {
-            const mtlLoader = new MTLLoader();
-            mtlLoader.load(mtlFileName, materials => {  //mtlファイルの読み込み
-                const objLoader = new OBJLoader();
-                materials.preload();
-                objLoader.setMaterials(materials);  //objLoaderにマテリアルをセット
-                objLoader.load(objFileName, object => { //objファイルの読み込み
-                    if(arrint === 1 || arrint === 3){
-                        headGroup.add(object);
-                    }else{
-                        allGroup.add(object);  //シーンに追加
-                    }
-                    mdls[arrint] = object;
-                    resolve();
-                });
-            });
+            var loader = new THREE.FBXLoader();
+            loader.load( fbxFileName, function ( object ) {
+                object.mixer = new THREE.AnimationMixer( object );
+                mixers.push( object.mixer );
+                mixer = object.mixer;
+                if(object.animations.length > 0){
+                    var action = object.mixer.clipAction( object.animations[ 0 ] );
+                    action.play();
+                }
+                object.scale.set(0.1,0.1,0.1);
+                scene.add( object );
+                resolve();
+            } );
         }));
     }
 
     function init(){
         // シーン
         scene = new THREE.Scene();
-        allGroup = new THREE.Group();
-        headGroup = new THREE.Group();
-        loadmdls('mdl/body.obj', 'mdl/body.mtl', 0);
-        loadmdls('mdl/head.obj', 'mdl/head.mtl', 1);
-        loadmdls('mdl/tumami.obj', 'mdl/tumami.mtl', 2);
-        loadmdls('mdl/wing.obj', 'mdl/wing.mtl', 3);
+        loadmdls('mdl/am_walk.fbx', 0);
 
         //マテリアル
         const colors = new Uint8Array( 3 );
@@ -184,6 +178,10 @@ import {MTLLoader} from '../../lib/MTLLoader.js';
 
         scene.add(tris);
 
+        // stats = new Stats();
+        // container.appendChild( stats.dom );
+
+
         // レンダラ
         renderer = new THREE.WebGLRenderer();
         renderer.setClearColor(new THREE.Color(RENDERER_PARAM.clearColor));
@@ -230,57 +228,33 @@ import {MTLLoader} from '../../lib/MTLLoader.js';
         const v = new THREE.Vector2(x, -y);
 
         raycaster.setFromCamera(v, camera);
-        const intersect = raycaster.intersectObject(mdls[2].children[0]);
+        // const intersect = raycaster.intersectObjects();
 
-        if(intersect.length > 0){
-            rot += Math.PI / 180 * 240;
-            rot = rot % (Math.PI * 2);
-            count++;
-        }
+        // if(intersect.length > 0){
+        //     console.log('aaa');
+        // }
     }
 
     function setmdls(){
-        allGroup.add(headGroup);
-        scene.add(allGroup);
-        for(let i = 0; i < 4; i++){
-            mdls[i].children[0].material = mat;
-        }
-        //wing
-        mdls[3].position.y = 7.6;
-        mdls[3].position.z = 1.5;
-        mdls[3].rotation.x = Math.PI / 180 * 80;
-        //tumami
-        mdls[2].position.y = 1.2;
-        mdls[2].position.z = 1.6;
-        mdls[2].rotation.x = Math.PI / 180 * 15;
+
     }    
 
     function render(){
         // 再帰呼び出し
         if(run === true){requestAnimationFrame(render);}
 
-        mdls[2].rotation.y = rot;
-        
-        if(count > 9){
-            bodytime += 0.01
-            if(allGroup.position.y < 100){
-                allGroup.position.y += Math.pow(bodytime, 2);
-                allGroup.position.x = Math.random() * 0.2;
-                allGroup.position.z = Math.random() * 0.2;
-            }
-        }else{
-            const mode = count % 3;
-            if(mode === 1){
-                mdls[3].rotation.y += 0.5;
-            }else if(mode === 2){
-                mdls[3].rotation.y += 0.5;
-                headrad += Math.PI / 180 * 0.4;
-                headGroup.rotation.y = Math.sin(headrad);
-            }
-        }
+        // if ( mixers.length > 0 ) {
+        //     for ( var i = 0; i < mixers.length; i ++ ) {
+        //         mixers[ i ].update( clock.getDelta() );
+        //     }
+        // }
+        const delta = clock.getDelta();
+
+        if ( mixer ) mixer.update( delta );
 
         // 描画
         renderer.render(scene, camera);
+        // stats.update();
     }
 })();
 
