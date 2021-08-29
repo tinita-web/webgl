@@ -20,7 +20,7 @@
     // 複数の関数で利用する広いスコープが必要な変数を宣言しておく
     let startTime = 0;                 // 描画開始時のタイムスタンプ
     let globalColor = [0.2, 0.6, 0.9]; // 頂点に適用するマテリアルの色
-    let globalAlpha = 0.5;             // 頂点に適用するマテリアルのアルファ
+    let globalAlpha = 1.0;             // 頂点に適用するマテリアルのアルファ
     let pointSize = 64.0;              // 頂点のポイントサイズ
     let pointPower = 0.1;              // 頂点の発光する力の係数 @@@
 
